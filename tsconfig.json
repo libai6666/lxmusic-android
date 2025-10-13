@@ -7,6 +7,8 @@
     "types": ["react-native", "node"],
     /* Completeness */
     "skipLibCheck": true,                                 /* Skip type checking all .d.ts files. */
+    "declaration": false,                                 /* Disable declaration file generation */
+    "outDir": "./dist",                                   /* Output directory for compiled files */
 
     "baseUrl": "./",
     "paths": {
@@ -20,5 +22,6 @@
       // "@utils": ["src/utils"],
     }
   },
-  "exclude": ["node_modules", "build", "dist"]
+  "exclude": ["node_modules", "build", "dist", "**/*.d.ts"],
+  "include": ["src/**/*", "index.js", "App.tsx"]
 }
