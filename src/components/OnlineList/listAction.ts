@@ -55,22 +55,11 @@ export const handleDislikeMusic = async(musicInfo: LX.Music.MusicInfoOnline) => 
   }
 }
 
-export const handleDownload = async(musicInfo: LX.Music.MusicInfoOnline, selectedList?: LX.Music.MusicInfoOnline[]) => {
-  // 检查存储权限（外部存储需要权限）
-  try {
-    const { requestStoragePermission } = await import('@/utils/tools')
-    const hasPermission = await requestStoragePermission()
-    
-    if (!hasPermission) {
-      toast(global.i18n.t('storage_permission_tip_request'))
-      return
-    }
-  } catch (error) {
-    console.log('权限检查失败:', error)
-    // 权限检查失败时继续执行，因为可能是设备不需要权限
-  }
+// 权限检查状态缓存
+let hasStoragePermissionCache: boolean | null = null
 
-  // 添加到下载队列
+export const handleDownload = (musicInfo: LX.Music.MusicInfoOnline, selectedList?: LX.Music.MusicInfoOnline[]) => {
+  // 立即添加到下载队列（不阻塞UI）
   if (selectedList && selectedList.length > 0) {
     selectedList.forEach(music => {
       addToDownloadQueue(music)
@@ -80,5 +69,27 @@ export const handleDownload = async(musicInfo: LX.Music.MusicInfoOnline, selecte
     addToDownloadQueue(musicInfo)
     toast(global.i18n.t('download_add_success'))
   }
+
+  // 异步检查权限（不阻塞UI）
+  void (async() => {
+    // 如果已经检查过权限，直接返回
+    if (hasStoragePermissionCache !== null) {
+      return
+    }
+
+    try {
+      const { requestStoragePermission } = await import('@/utils/tools')
+      const hasPermission = await requestStoragePermission()
+      hasStoragePermissionCache = hasPermission
+      
+      if (!hasPermission) {
+        toast(global.i18n.t('storage_permission_tip_request'))
+      }
+    } catch (error) {
+      console.log('权限检查失败:', error)
+      // 权限检查失败时继续执行，因为可能是设备不需要权限
+      hasStoragePermissionCache = true
+    }
+  })()
 }
 

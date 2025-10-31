@@ -91,20 +91,63 @@ export const addToDownloadQueue = (musicInfo: LX.Music.MusicInfoOnline, quality?
     },
   }
   
-  // 添加到下载列表
+  // 添加到下载列表（同步操作，立即返回）
   downloadAction.addTask(task)
   
-  // 处理队列
-  void processDownloadQueue()
+  // 延迟处理队列（不阻塞UI）
+  setImmediate(() => {
+    void processDownloadQueue()
+  })
 }
 
 /**
  * 批量添加下载任务
  */
 export const batchAddToDownloadQueue = (musicList: LX.Music.MusicInfoOnline[], quality?: LX.Quality): void => {
+  // 快速添加所有任务到队列
   for (const musicInfo of musicList) {
-    addToDownloadQueue(musicInfo, quality)
+    const config = downloadState.config
+    
+    if (!config.savePath) {
+      log.error('下载路径未设置，跳过任务')
+      continue
+    }
+    
+    const downloadQuality = quality || config.downloadQuality
+    const taskId = `${musicInfo.id}_${downloadQuality}_${Date.now()}`
+    
+    const { generateFileName, getFileExt } = require('./taskManager')
+    const ext = getFileExt(downloadQuality)
+    const fileName = generateFileName(musicInfo, ext)
+    const filePath = `${config.savePath}/${fileName}`
+    
+    const task: LX.Download.ListItem = {
+      id: taskId,
+      isComplate: false,
+      status: 'waiting',
+      statusText: '等待下载',
+      downloaded: 0,
+      total: 0,
+      progress: 0,
+      speed: '0 B/s',
+      startTime: Date.now(),
+      metadata: {
+        musicInfo,
+        url: null,
+        quality: downloadQuality,
+        ext,
+        fileName,
+        filePath,
+      },
+    }
+    
+    downloadAction.addTask(task)
   }
+  
+  // 统一延迟处理队列（避免多次调用）
+  setImmediate(() => {
+    void processDownloadQueue()
+  })
 }
 
 /**
