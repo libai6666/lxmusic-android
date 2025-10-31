@@ -9,6 +9,8 @@ import { addDislikeInfo, hasDislike } from '@/core/dislikeList'
 import playerState from '@/store/player/state'
 import musicSdk from '@/utils/musicSdk'
 import { toOldMusicInfo } from '@/utils'
+import { addToDownloadQueue } from '@/core/download'
+import { externalStorageDirectoryPath } from '@/utils/fs'
 
 export const handlePlay = (musicInfo: LX.Music.MusicInfoOnline) => {
   void addListMusics(LIST_IDS.DEFAULT, [musicInfo], settingState.setting['list.addMusicLocationType']).then(() => {
@@ -50,6 +52,33 @@ export const handleDislikeMusic = async(musicInfo: LX.Music.MusicInfoOnline) => 
   toast(global.i18n.t('lists_dislike_music_add_tip'))
   if (hasDislike(playerState.playMusicInfo.musicInfo)) {
     void playNext(true)
+  }
+}
+
+export const handleDownload = async(musicInfo: LX.Music.MusicInfoOnline, selectedList?: LX.Music.MusicInfoOnline[]) => {
+  // 检查存储权限（外部存储需要权限）
+  try {
+    const { requestStoragePermission } = await import('@/utils/tools')
+    const hasPermission = await requestStoragePermission()
+    
+    if (!hasPermission) {
+      toast(global.i18n.t('storage_permission_tip_request'))
+      return
+    }
+  } catch (error) {
+    console.log('权限检查失败:', error)
+    // 权限检查失败时继续执行，因为可能是设备不需要权限
+  }
+
+  // 添加到下载队列
+  if (selectedList && selectedList.length > 0) {
+    selectedList.forEach(music => {
+      addToDownloadQueue(music)
+    })
+    toast(global.i18n.t('download_add_success'))
+  } else {
+    addToDownloadQueue(musicInfo)
+    toast(global.i18n.t('download_add_success'))
   }
 }
 

@@ -3,6 +3,7 @@ import type { InitState as CommonState } from '@/store/common/state'
 import type { InitState as ListState } from '@/store/list/state'
 import type { InitState as PlayerState } from '@/store/player/state'
 import type { InitState as VersionState } from '@/store/version/state'
+import type { InitState as DownloadState } from '@/store/download/state'
 import { type I18n } from '@/lang'
 
 
@@ -120,6 +121,20 @@ export class StateEvent extends Event {
 
   sourceNamesUpdated(names: CommonState['sourceNames']) {
     this.emit('sourceNamesUpdated', names)
+  }
+
+  /**
+   * 下载列表更新
+   */
+  downloadListChanged(list: DownloadState['list']) {
+    this.emit('downloadListChanged', list)
+  }
+
+  /**
+   * 下载配置更新
+   */
+  downloadConfigChanged(config: DownloadState['config']) {
+    this.emit('downloadConfigChanged', config)
   }
 }
 

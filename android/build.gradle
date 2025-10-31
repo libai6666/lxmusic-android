@@ -15,6 +15,12 @@ buildscript {
         excludeAppGlideModule = true
     }
     repositories {
+        // 阿里云镜像（国内加速）
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        maven { url 'https://maven.aliyun.com/repository/jcenter' }
+        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+        // 备用官方源
         google()
         mavenCentral()
     }
@@ -26,3 +32,16 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+// 全局仓库配置（所有子项目使用）
+allprojects {
+    repositories {
+        // 阿里云镜像（国内加速）
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        maven { url 'https://maven.aliyun.com/repository/jcenter' }
+        // 备用官方源
+        google()
+        mavenCentral()
+    }
+}

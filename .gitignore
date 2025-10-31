@@ -66,3 +66,8 @@ buck-out/
 
 # testing
 /coverage
+# Gradle 缓存
+.gradle_home/
+android/.gradle/
+build/
+*.lock

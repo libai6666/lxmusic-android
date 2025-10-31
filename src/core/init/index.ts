@@ -14,6 +14,9 @@ import settingState from '@/store/setting/state'
 import { checkUpdate } from '@/core/version'
 import { bootLog } from '@/utils/bootLog'
 import { cheatTip } from '@/utils/tools'
+import { initDownloadData } from '@/core/download'
+import { downloadAction } from '@/store/download'
+import { externalStorageDirectoryPath } from '@/utils/fs'
 
 let isFirstPush = true
 const handlePushedHomeScreen = async() => {
@@ -59,6 +62,25 @@ export default async() => {
   bootLog('Data inited.')
   await initCommonState(setting)
   bootLog('Common State inited.')
+
+  // 初始化下载模块
+  await initDownloadData()
+  
+  // 如果下载路径为空，使用默认路径
+  if (!setting['download.savePath']) {
+    const DEFAULT_SETTING = await import('@/config/defaultSetting')
+    setting['download.savePath'] = DEFAULT_SETTING.default['download.savePath']
+    bootLog(`Download path is empty, using default: ${setting['download.savePath']}`)
+  }
+  
+  // 同步下载配置到store
+  downloadAction.updateConfig({
+    savePath: setting['download.savePath'],
+    downloadQuality: setting['download.downloadQuality'],
+    maxDownloadNum: setting['download.maxDownloadNum'],
+    fileName: setting['download.fileName'],
+  })
+  bootLog('Download inited.')
 
   void initSync(setting)
   bootLog('Sync inited.')
