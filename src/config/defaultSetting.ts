@@ -70,6 +70,11 @@ const defaultSetting: LX.AppSetting = {
   'download.savePath': '/storage/emulated/0/Music/LXMusic',
   'download.downloadQuality': '128k',
   'download.maxDownloadNum': 3,
+  'download.autoSwitchSource': false,
+  'download.embedCover': true,
+  'download.embedLyric': true,
+  'download.embedLyricTranslation': true,
+  'download.embedLyricRoma': true,
 
   'sync.enable': false,
 

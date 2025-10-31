@@ -3,9 +3,10 @@
  * 负责单个下载任务的生命周期管理
  */
 
-import { downloadFile, stopDownload, existsFile, mkdir, stat } from '@/utils/fs'
+import { downloadFile, stopDownload, existsFile, mkdir, stat, writeFile } from '@/utils/fs'
 import RNFS from 'react-native-fs'
 import { getMusicUrl } from '@/core/music/online'
+import { getPicUrl, getLyricInfo } from '@/core/music/online'
 import { downloadAction } from '@/store/download'
 import { log } from '@/utils/log'
 import settingState from '@/store/setting/state'
@@ -78,6 +79,105 @@ export const getFileExt = (quality: LX.Quality): LX.Download.FileExt => {
     default:
       return 'mp3'
   }
+}
+
+/**
+ * 嵌入元数据（下载封面和歌词文件）
+ * 使用 setImmediate 确保不阻塞主线程
+ */
+const embedMetadata = async(taskId: string, task: LX.Download.ListItem): Promise<void> => {
+  // 延迟执行，让主线程保持响应
+  await new Promise(resolve => setImmediate(resolve))
+  
+  const setting = settingState.setting
+  const musicInfo = task.metadata.musicInfo
+  
+  // 获取文件路径（去掉扩展名）
+  const baseFilePath = task.metadata.filePath.replace(/\.[^/.]+$/, '')
+  
+  log.info(`[embedMetadata] 开始处理元数据: ${musicInfo.name}`)
+  
+  // 下载封面
+  if (setting['download.embedCover']) {
+    try {
+      log.info('[embedMetadata] 正在获取封面...')
+      const picUrl = await getPicUrl({ 
+        musicInfo, 
+        listId: '', 
+        isRefresh: false 
+      })
+      
+      if (picUrl && picUrl.startsWith('http')) {
+        log.info(`[embedMetadata] 封面URL: ${picUrl}`)
+        const coverPath = `${baseFilePath}.jpg`
+        
+        // 下载封面
+        const { promise } = RNFS.downloadFile({
+          fromUrl: picUrl,
+          toFile: coverPath,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Pixel 3) AppleWebKit/537.36',
+          },
+        })
+        
+        const result = await promise
+        if (result.statusCode === 200) {
+          log.info(`[embedMetadata] 封面下载成功: ${coverPath}`)
+        } else {
+          log.warn(`[embedMetadata] 封面下载失败: HTTP ${result.statusCode}`)
+        }
+      } else {
+        log.info('[embedMetadata] 未找到封面URL')
+      }
+    } catch (error: any) {
+      log.error(`[embedMetadata] 下载封面失败: ${error.message}`)
+    }
+  }
+  
+  // 让出主线程
+  await new Promise(resolve => setImmediate(resolve))
+  
+  // 下载歌词
+  if (setting['download.embedLyric']) {
+    try {
+      log.info('[embedMetadata] 正在获取歌词...')
+      const lyricInfo = await getLyricInfo({ 
+        musicInfo, 
+        isRefresh: false 
+      })
+      
+      if (lyricInfo && lyricInfo.lyric) {
+        const lrcPath = `${baseFilePath}.lrc`
+        let lrcContent = lyricInfo.lyric
+        
+        // 添加翻译歌词
+        if (setting['download.embedLyricTranslation'] && lyricInfo.tlyric) {
+          lrcContent = mergeLyrics(lrcContent, lyricInfo.tlyric)
+        }
+        
+        // 添加罗马音
+        if (setting['download.embedLyricRoma'] && lyricInfo.rlyric) {
+          lrcContent = mergeLyrics(lrcContent, lyricInfo.rlyric)
+        }
+        
+        await writeFile(lrcPath, lrcContent, 'utf8')
+        log.info(`[embedMetadata] 歌词保存成功: ${lrcPath}`)
+      } else {
+        log.info('[embedMetadata] 未找到歌词')
+      }
+    } catch (error: any) {
+      log.error(`[embedMetadata] 保存歌词失败: ${error.message}`)
+    }
+  }
+  
+  log.info('[embedMetadata] 元数据处理完成')
+}
+
+/**
+ * 合并歌词（简单合并，不做复杂的时间轴匹配）
+ */
+const mergeLyrics = (original: string, translation: string): string => {
+  return `${original}\n\n${translation}`
 }
 
 /**
@@ -252,7 +352,7 @@ export const startDownloadTask = async(taskId: string): Promise<void> => {
       downloadPromise
         .then((result) => {
           if (result.statusCode === 200) {
-            // 下载成功
+            // 标记为完成（立即返回，不等待元数据）
             downloadAction.updateTask(taskId, {
               status: 'completed',
               isComplate: true,
@@ -260,6 +360,12 @@ export const startDownloadTask = async(taskId: string): Promise<void> => {
               progress: 1,
               finishTime: Date.now(),
             })
+            
+            // 异步处理元数据（不阻塞主流程）
+            void embedMetadata(taskId, task).catch((error: any) => {
+              log.error(`嵌入元数据失败（不影响下载）: ${error.message}`, error)
+            })
+            
             resolve()
           } else {
             reject(new Error(`下载失败: HTTP ${result.statusCode}`))

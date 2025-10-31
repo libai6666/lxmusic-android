@@ -357,6 +357,31 @@ declare global {
       'download.maxDownloadNum': number
 
       /**
+       * 自动换源下载
+       */
+      'download.autoSwitchSource': boolean
+
+      /**
+       * 嵌入封面
+       */
+      'download.embedCover': boolean
+
+      /**
+       * 嵌入歌词
+       */
+      'download.embedLyric': boolean
+
+      /**
+       * 嵌入翻译歌词
+       */
+      'download.embedLyricTranslation': boolean
+
+      /**
+       * 嵌入罗马音
+       */
+      'download.embedLyricRoma': boolean
+
+      /**
        * 是否启用同步
        */
       'sync.enable': boolean
