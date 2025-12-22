@@ -21,6 +21,7 @@ export interface ListMenuType {
 
 interface Props {
   onPlay: (info: SelectInfo) => void
+  onPlayLater: (info: SelectInfo) => void
   onRemove: (info: SelectInfo) => void
   onAdd: (info: SelectInfo) => void
   onDeleteFile: (info: SelectInfo) => void
@@ -33,7 +34,7 @@ interface MenuItem {
   action: () => void
 }
 
-export default forwardRef<ListMenuType, Props>(({ onPlay, onRemove, onAdd, onDeleteFile }, ref) => {
+export default forwardRef<ListMenuType, Props>(({ onPlay, onPlayLater, onRemove, onAdd, onDeleteFile }, ref) => {
   const theme = useTheme()
   const t = useI18n()
   const [visible, setVisible] = useState(false)
@@ -58,6 +59,11 @@ export default forwardRef<ListMenuType, Props>(({ onPlay, onRemove, onAdd, onDel
     handleClose()
   }, [selectInfo, onPlay, handleClose])
 
+  const handlePlayLater = useCallback(() => {
+    if (selectInfo) onPlayLater(selectInfo)
+    handleClose()
+  }, [selectInfo, onPlayLater, handleClose])
+
   const handleAdd = useCallback(() => {
     if (selectInfo) onAdd(selectInfo)
     handleClose()
@@ -75,6 +81,7 @@ export default forwardRef<ListMenuType, Props>(({ onPlay, onRemove, onAdd, onDel
 
   const menus: MenuItem[] = [
     { id: 'play', name: t('play'), icon: 'play', action: handlePlay },
+    { id: 'playLater', name: t('play_later'), icon: 'play', action: handlePlayLater },
     { id: 'add', name: t('add_to'), icon: 'add-music', action: handleAdd },
     { id: 'remove', name: t('local_remove_music'), icon: 'remove', action: handleRemove },
     { id: 'deleteFile', name: t('local_delete_file'), icon: 'remove', action: handleDeleteFile },

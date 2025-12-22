@@ -1,6 +1,7 @@
 import { localAction, type LocalMusicInfo } from '@/store/local'
 import { confirmDialog, toast } from '@/utils/tools'
 import { playList } from '@/core/player/player'
+import { addTempPlayList } from '@/core/player/tempPlayList'
 import { unlink } from '@/utils/fs'
 
 export const handlePlay = async(index: number) => {
@@ -13,6 +14,19 @@ export const handlePlayAll = async() => {
   const list = localAction.getList()
   if (list.length === 0) return
   await playList('local', 0)
+}
+
+export const handlePlayLater = (
+  musicInfo: LX.Music.MusicInfoLocal,
+  selectedList: LocalMusicInfo[],
+  onDone: () => void
+) => {
+  if (selectedList.length) {
+    addTempPlayList(selectedList.map(s => ({ listId: 'local', musicInfo: s })))
+    onDone()
+  } else {
+    addTempPlayList([{ listId: 'local', musicInfo }])
+  }
 }
 
 export const handleRemove = async(

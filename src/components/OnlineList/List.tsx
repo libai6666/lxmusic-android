@@ -181,7 +181,7 @@ const List = forwardRef<ListType, ListProps>(({
           onPlayList(index)
         } else {
           // console.log(currentList[index])
-          handlePlay(currentList[index])
+          void handlePlay(currentList, index)
         }
       }
     })

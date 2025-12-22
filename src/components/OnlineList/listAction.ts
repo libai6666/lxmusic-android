@@ -1,5 +1,5 @@
 import { LIST_IDS } from '@/config/constant'
-import { addListMusics } from '@/core/list'
+import { addListMusics, setTempList } from '@/core/list'
 import { playList, playNext } from '@/core/player/player'
 import { addTempPlayList } from '@/core/player/tempPlayList'
 import settingState from '@/store/setting/state'
@@ -12,12 +12,11 @@ import { toOldMusicInfo } from '@/utils'
 import { addToDownloadQueue } from '@/core/download'
 import { externalStorageDirectoryPath } from '@/utils/fs'
 
-export const handlePlay = (musicInfo: LX.Music.MusicInfoOnline) => {
-  void addListMusics(LIST_IDS.DEFAULT, [musicInfo], settingState.setting['list.addMusicLocationType']).then(() => {
-    const index = getListMusicSync(LIST_IDS.DEFAULT).findIndex(m => m.id == musicInfo.id)
-    if (index < 0) return
-    void playList(LIST_IDS.DEFAULT, index)
-  })
+export const handlePlay = async(list: LX.Music.MusicInfoOnline[], index: number) => {
+  if (!list.length) return
+  const listId = `online_list_${Date.now()}`
+  await setTempList(listId, [...list])
+  void playList(LIST_IDS.TEMP, index)
 }
 export const handlePlayLater = (musicInfo: LX.Music.MusicInfoOnline, selectedList: LX.Music.MusicInfoOnline[], onCancelSelect: () => void) => {
   if (selectedList.length) {

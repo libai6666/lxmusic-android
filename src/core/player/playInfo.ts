@@ -41,7 +41,7 @@ export const getPlayIndex = (listId: string | null, musicInfo: LX.Download.ListI
   playerPlayIndex: number
 } => {
   const { playInfo } = playerState
-  const playerList = getListMusicSync(playInfo.playerListId)
+  const playerList = getList(playInfo.playerListId)
 
   // if (listIndex < 0) throw new Error('music info not found')
   // playInfo.playIndex = listIndex
@@ -52,7 +52,7 @@ export const getPlayIndex = (listId: string | null, musicInfo: LX.Download.ListI
     playerPlayIndex = Math.min(playInfo.playerPlayIndex, playerList.length - 1)
   }
 
-  const list = getListMusicSync(listId)
+  const list = getList(listId)
   if (list.length && musicInfo) {
     const currentId = musicInfo.id
     playIndex = list.findIndex(m => m.id == currentId)

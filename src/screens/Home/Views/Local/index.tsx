@@ -9,7 +9,7 @@ import List, { type ListType } from './List'
 import ListMenu, { type ListMenuType, type SelectInfo } from './ListMenu'
 import Header from './Header'
 import MultipleModeBar, { type SelectMode, type MultipleModeBarType } from './MultipleModeBar'
-import { handlePlay, handleRemove, handleDeleteFile } from './listAction'
+import { handlePlay, handlePlayLater, handleRemove, handleDeleteFile } from './listAction'
 import ListMusicAdd, { type MusicAddModalType as ListMusicAddType } from '@/components/MusicAddModal'
 import ListMusicMultiAdd, { type MusicMultiAddModalType as ListAddMultiType } from '@/components/MusicMultiAddModal'
 import { localAction } from '@/store/local'
@@ -123,6 +123,7 @@ export default () => {
       <ListMenu
         ref={listMenuRef}
         onPlay={info => { handlePlay(info.index) }}
+        onPlayLater={info => { handlePlayLater(info.musicInfo, info.selectedList, handleExitSelect) }}
         onRemove={info => { handleRemove(info.musicInfo, info.selectedList, handleExitSelect) }}
         onAdd={handleAddMusic}
         onDeleteFile={info => { handleDeleteFile(info.musicInfo, info.selectedList, handleExitSelect) }}
