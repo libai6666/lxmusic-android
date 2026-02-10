@@ -50,6 +50,11 @@ export interface InitState {
    * 排序顺序
    */
   sortOrder: SortOrder
+
+  /**
+   * 用户手动移除的歌曲ID列表（扫描时排除）
+   */
+  excludedIds: string[]
 }
 
 const state: InitState = {
@@ -63,6 +68,7 @@ const state: InitState = {
   },
   sortType: 'addTime',
   sortOrder: 'desc',
+  excludedIds: [],
 }
 
 export default state

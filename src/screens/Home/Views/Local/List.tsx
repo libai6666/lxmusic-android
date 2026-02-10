@@ -6,6 +6,7 @@ import { type LocalMusicInfo } from '@/store/local/state'
 import ListItem, { ITEM_HEIGHT } from './ListItem'
 import { createStyle } from '@/utils/tools'
 import Text from '@/components/common/Text'
+import { usePlayMusicInfo } from '@/store/player/hook'
 
 export interface ListType {
   setIsMultiSelectMode: (isMulti: boolean) => void
@@ -99,6 +100,9 @@ export default forwardRef<ListType, Props>(({ list, onShowMenu, onMultiSelectMod
     onShowMenu(item, index, position)
   }, [onShowMenu])
 
+  const playMusicInfo = usePlayMusicInfo()
+  const playingMusicId = playMusicInfo.musicInfo?.id ?? null
+
   const renderItem = useCallback(({ item, index }: { item: LocalMusicInfo, index: number }) => {
     return (
       <ListItem
@@ -106,12 +110,13 @@ export default forwardRef<ListType, Props>(({ list, onShowMenu, onMultiSelectMod
         index={index}
         isMultiSelectMode={isMultiSelectMode}
         isSelected={selectedIds.has(item.id)}
+        isPlaying={item.id === playingMusicId}
         onPress={handlePress}
         onLongPress={handleLongPress}
         onShowMenu={handleShowMenu}
       />
     )
-  }, [isMultiSelectMode, selectedIds, handlePress, handleLongPress, handleShowMenu])
+  }, [isMultiSelectMode, selectedIds, playingMusicId, handlePress, handleLongPress, handleShowMenu])
 
   const keyExtractor = useCallback((item: LocalMusicInfo) => item.id, [])
 

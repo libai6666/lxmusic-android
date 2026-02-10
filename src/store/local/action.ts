@@ -4,6 +4,16 @@
 
 import state, { type LocalMusicInfo, type FolderInfo, type SortType, type SortOrder } from './state'
 
+// 从文件路径或 content URI 中提取实际文件名
+const extractFileName = (filePath: string): string => {
+  try {
+    const decoded = decodeURIComponent(filePath)
+    return decoded.split(/[/\\]/).pop() || ''
+  } catch {
+    return filePath.split(/[/\\]/).pop() || ''
+  }
+}
+
 const sortList = (list: LocalMusicInfo[], sortType: SortType, sortOrder: SortOrder): LocalMusicInfo[] => {
   const sorted = [...list]
   sorted.sort((a, b) => {
@@ -46,6 +56,7 @@ export default {
    * 添加本地音乐
    */
   addMusic(music: LocalMusicInfo) {
+    if (state.excludedIds.includes(music.id)) return false
     const exists = state.list.some(item => item.id === music.id)
     if (exists) return false
     state.list.push(music)
@@ -57,9 +68,34 @@ export default {
   /**
    * 批量添加本地音乐
    */
-  addMusics(musics: LocalMusicInfo[]) {
+  addMusics(musics: LocalMusicInfo[], ignoreExcluded: boolean = false) {
     const existIds = new Set(state.list.map(item => item.id))
-    const newMusics = musics.filter(m => !existIds.has(m.id))
+    // 基于文件名+大小的二次去重（处理 content URI 和文件路径对同一文件产生不同ID的情况）
+    const existFileKeys = new Set(state.list.map(item => {
+      return `${extractFileName(item.meta.filePath)}|${item.size}`
+    }))
+    let newMusics: LocalMusicInfo[]
+    if (ignoreExcluded) {
+      newMusics = musics.filter(m => {
+        if (existIds.has(m.id)) return false
+        const fileKey = `${extractFileName(m.meta.filePath)}|${m.size}`
+        return !existFileKeys.has(fileKey)
+      })
+      // 从排除列表中移除这些歌曲，允许后续刷新时保留
+      const addedIdSet = new Set(newMusics.map(m => m.id))
+      const prevLen = state.excludedIds.length
+      state.excludedIds = state.excludedIds.filter(id => !addedIdSet.has(id))
+      if (state.excludedIds.length !== prevLen) {
+        global.state_event.localExcludedIdsChanged([...state.excludedIds])
+      }
+    } else {
+      const excludedIdSet = new Set(state.excludedIds)
+      newMusics = musics.filter(m => {
+        if (existIds.has(m.id) || excludedIdSet.has(m.id)) return false
+        const fileKey = `${extractFileName(m.meta.filePath)}|${m.size}`
+        return !existFileKeys.has(fileKey)
+      })
+    }
     if (newMusics.length === 0) return 0
     state.list.push(...newMusics)
     state.list = sortList(state.list, state.sortType, state.sortOrder)
@@ -72,6 +108,10 @@ export default {
    */
   removeMusic(id: string) {
     state.list = state.list.filter(item => item.id !== id)
+    if (!state.excludedIds.includes(id)) {
+      state.excludedIds.push(id)
+      global.state_event.localExcludedIdsChanged([...state.excludedIds])
+    }
     global.state_event.localListChanged([...state.list])
   },
 
@@ -81,6 +121,12 @@ export default {
   removeMusics(ids: string[]) {
     const idSet = new Set(ids)
     state.list = state.list.filter(item => !idSet.has(item.id))
+    const existingExcluded = new Set(state.excludedIds)
+    const newExcluded = ids.filter(id => !existingExcluded.has(id))
+    if (newExcluded.length > 0) {
+      state.excludedIds.push(...newExcluded)
+      global.state_event.localExcludedIdsChanged([...state.excludedIds])
+    }
     global.state_event.localListChanged([...state.list])
   },
 
@@ -89,6 +135,8 @@ export default {
    */
   clearList() {
     state.list = []
+    state.excludedIds = []
+    global.state_event.localExcludedIdsChanged([...state.excludedIds])
     global.state_event.localListChanged([...state.list])
   },
 
@@ -175,5 +223,27 @@ export default {
    */
   getFolders(): FolderInfo[] {
     return state.folders
+  },
+
+  /**
+   * 设置排除ID列表
+   */
+  setExcludedIds(ids: string[]) {
+    state.excludedIds = ids
+  },
+
+  /**
+   * 获取排除ID列表
+   */
+  getExcludedIds(): string[] {
+    return state.excludedIds
+  },
+
+  /**
+   * 清空排除ID列表
+   */
+  clearExcludedIds() {
+    state.excludedIds = []
+    global.state_event.localExcludedIdsChanged([...state.excludedIds])
   },
 }

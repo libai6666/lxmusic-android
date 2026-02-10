@@ -98,7 +98,7 @@ export const scanFolderFiles = async(folderPath: string, recursive: boolean = fa
     } else {
       // Non-recursive scan for specific folder
       const files = await scanAudioFiles(folderPath)
-      filesToProcess = files.map(f => ({ path: folderPath + '/' + f.name, name: f.name || '' }))
+      filesToProcess = files.map(f => ({ path: f.path || (folderPath + '/' + f.name), name: f.name || '' }))
     }
 
     const total = filesToProcess.length
@@ -152,10 +152,7 @@ export const selectAndImportFolder = async(): Promise<void> => {
       addTime: Date.now(),
     })
 
-    if (!added) {
-      toast(global.i18n.t('list_add_tip_exists'))
-      return
-    }
+    // folder already exists is ok, still proceed to scan for missing songs
 
     // Start scanning
     localAction.setScanning(true)
@@ -166,7 +163,7 @@ export const selectAndImportFolder = async(): Promise<void> => {
       if (musics.length === 0) {
         toast(global.i18n.t('local_scan_empty'))
       } else {
-        const addedCount = localAction.addMusics(musics)
+        const addedCount = localAction.addMusics(musics, true)
         toast(global.i18n.t('local_scan_complete', { count: addedCount }))
       }
     } finally {
@@ -254,7 +251,7 @@ export const scanAllStorage = async(): Promise<void> => {
     if (externalStorageDirectoryPath) {
       try {
         const musics = await scanFolderFiles(externalStorageDirectoryPath, true)
-        totalAdded += localAction.addMusics(musics)
+        totalAdded += localAction.addMusics(musics, true)
         scannedPaths.push(externalStorageDirectoryPath)
       } catch (e) {
         console.error('Error scanning internal storage:', e)
@@ -268,7 +265,7 @@ export const scanAllStorage = async(): Promise<void> => {
         if (scannedPaths.includes(extPath)) continue
         try {
           const musics = await scanFolderFiles(extPath, true)
-          totalAdded += localAction.addMusics(musics)
+          totalAdded += localAction.addMusics(musics, true)
           scannedPaths.push(extPath)
         } catch (e) {
           console.error('Error scanning external storage:', extPath, e)

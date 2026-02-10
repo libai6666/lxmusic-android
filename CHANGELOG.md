@@ -6,6 +6,21 @@ Project versioning adheres to [Semantic Versioning](http://semver.org/).
 Commit convention is based on [Conventional Commits](http://conventionalcommits.org).
 Change log format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [1.8.2](https://github.com/lyswhut/lx-music-mobile/compare/v1.8.1...v1.8.2) - 2025-12-22
+
+### 修复
+
+- 修复点击排行榜、搜索列表中的歌曲后，播放完成只重复播放当前歌曲而不继续播放列表其他歌曲的问题
+- 修复本地音乐列表播放模式（列表循环、随机、顺序、单曲循环）不生效的问题
+- 修复 `getPlayIndex` 函数无法正确获取本地音乐列表的问题
+
+### 新增
+
+- 新增本地音乐列表「稍后播放」功能
+- 新增各列表当前播放歌曲高亮显示功能（排行榜、搜索列表、本地列表等）
+- 新增预设默认音乐源功能，首次启动自动导入预设音乐源并默认选中第一个
+- 新增音乐源配置文件 `src/config/defaultMusicSources.ts`，可自定义添加或修改预设音乐源
+
 ## [1.7.1](https://github.com/lyswhut/lx-music-mobile/compare/v1.7.0...v1.7.1) - 2025-05-01
 
 ### 修复

@@ -5,8 +5,8 @@ import { useI18n } from '@/lang'
 import Text from '@/components/common/Text'
 import { Icon } from '@/components/common/Icon'
 import { useScanning, useScanProgress, localAction } from '@/store/local'
-import { scanFolder, selectAndImportFolder, scanAllStorage } from '@/core/local'
-import { saveLocalListNow } from '@/core/init/local'
+import { selectAndImportFolder, scanAllStorage } from '@/core/local'
+import { saveLocalListNow, saveLocalExcludedIdsNow } from '@/core/init/local'
 import { confirmDialog } from '@/utils/tools'
 import SortModal, { type SortModalType } from './SortModal'
 import FolderManagerModal, { type FolderManagerModalType } from './FolderManagerModal'
@@ -32,11 +32,6 @@ export default memo(() => {
     folderManagerRef.current?.show()
   }, [])
 
-  const handleRefresh = useCallback(async() => {
-    if (isScanning) return
-    await scanFolder()
-  }, [isScanning])
-
   const handleScanAll = useCallback(async() => {
     if (isScanning) return
     await scanAllStorage()
@@ -49,6 +44,7 @@ export default memo(() => {
     if (!confirmed) return
     localAction.clearList()
     saveLocalListNow() // Immediately save to storage
+    saveLocalExcludedIdsNow() // Immediately save cleared excluded IDs
   }, [t])
 
   return (
@@ -75,17 +71,6 @@ export default memo(() => {
           <Icon name="menu" size={16} color={theme['c-primary-font']} />
           <Text size={13} color={theme['c-primary-font']} style={styles.buttonText}>
             {t('local_folder_manager')}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: theme['c-primary-light-400-alpha-200'] }]}
-          onPress={handleRefresh}
-          disabled={isScanning}
-        >
-          <Icon name="available_updates" size={16} color={theme['c-primary-font']} />
-          <Text size={13} color={theme['c-primary-font']} style={styles.buttonText}>
-            {t('local_refresh')}
           </Text>
         </TouchableOpacity>
 

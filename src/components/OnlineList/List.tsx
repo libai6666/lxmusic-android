@@ -13,6 +13,7 @@ import { useI18n } from '@/lang'
 import Text from '@/components/common/Text'
 import { handlePlay } from './listAction'
 import { useSettingValue } from '@/store/setting/hook'
+import { usePlayMusicInfo } from '@/store/player/hook'
 
 type FlatListType = FlatListProps<LX.Music.MusicInfoOnline>
 
@@ -200,6 +201,9 @@ const List = forwardRef<ListType, ListProps>(({
   }
 
 
+  const playMusicInfo = usePlayMusicInfo()
+  const playingMusicId = playMusicInfo.musicInfo?.id ?? null
+
   const renderItem: FlatListType['renderItem'] = ({ item, index }) => (
     <ListItem
       item={item}
@@ -212,6 +216,7 @@ const List = forwardRef<ListType, ListProps>(({
       rowInfo={rowInfo.current}
       isShowAlbumName={isShowAlbumName}
       isShowInterval={isShowInterval}
+      isPlaying={item.id === playingMusicId}
     />
   )
   const getkey: FlatListType['keyExtractor'] = item => item.id

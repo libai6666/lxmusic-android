@@ -165,6 +165,13 @@ export class StateEvent extends Event {
   localScanProgressChanged(progress: LocalState['scanProgress']) {
     this.emit('localScanProgressChanged', progress)
   }
+
+  /**
+   * 本地音乐排除ID列表更新
+   */
+  localExcludedIdsChanged(excludedIds: string[]) {
+    this.emit('localExcludedIdsChanged', excludedIds)
+  }
 }
 
 

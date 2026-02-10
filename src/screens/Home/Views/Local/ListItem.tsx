@@ -12,12 +12,13 @@ interface Props {
   index: number
   isMultiSelectMode: boolean
   isSelected: boolean
+  isPlaying?: boolean
   onPress: (item: LocalMusicInfo, index: number) => void
   onLongPress: (item: LocalMusicInfo, index: number, position: { x: number, y: number, w: number, h: number }) => void
   onShowMenu: (item: LocalMusicInfo, index: number, position: { x: number, y: number, w: number, h: number }) => void
 }
 
-export default memo(({ item, index, isMultiSelectMode, isSelected, onPress, onLongPress, onShowMenu }: Props) => {
+export default memo(({ item, index, isMultiSelectMode, isSelected, isPlaying, onPress, onLongPress, onShowMenu }: Props) => {
   const theme = useTheme()
   const viewRef = useRef<View>(null)
 
@@ -64,21 +65,26 @@ export default memo(({ item, index, isMultiSelectMode, isSelected, onPress, onLo
             />
           </View>
         )}
+        {!isMultiSelectMode && isPlaying && (
+          <View style={styles.playingIcon}>
+            <Icon name="play-outline" size={16} color={theme['c-primary-font']} />
+          </View>
+        )}
         <View style={styles.info}>
-          <Text numberOfLines={1} size={15} color={theme['c-font']}>
+          <Text numberOfLines={1} size={15} color={isPlaying ? theme['c-primary-font'] : theme['c-font']}>
             {item.name}
           </Text>
           <View style={styles.subInfo}>
-            <Text numberOfLines={1} size={12} color={theme['c-font-label']}>
+            <Text numberOfLines={1} size={12} color={isPlaying ? theme['c-primary-alpha-200'] : theme['c-font-label']}>
               {item.singer}
             </Text>
             {item.meta.albumName ? (
-              <Text numberOfLines={1} size={12} color={theme['c-font-label']} style={styles.album}>
+              <Text numberOfLines={1} size={12} color={isPlaying ? theme['c-primary-alpha-200'] : theme['c-font-label']} style={styles.album}>
                 {' - '}{item.meta.albumName}
               </Text>
             ) : null}
             {item.interval ? (
-              <Text size={12} color={theme['c-font-label']} style={styles.duration}>
+              <Text size={12} color={isPlaying ? theme['c-primary-alpha-400'] : theme['c-font-label']} style={styles.duration}>
                 {item.interval}
               </Text>
             ) : null}
@@ -104,6 +110,9 @@ const styles = StyleSheet.create({
   },
   checkbox: {
     marginRight: 10,
+  },
+  playingIcon: {
+    marginRight: 8,
   },
   info: {
     flex: 1,

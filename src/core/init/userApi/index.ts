@@ -5,6 +5,7 @@ import BackgroundTimer from 'react-native-background-timer'
 import { fetchData } from './request'
 import { getUserApiList } from '@/utils/data'
 import { confirmDialog, openUrl, tipDialog } from '@/utils/tools'
+import { initDefaultMusicSources } from './defaultSources'
 
 
 export default async(setting: LX.AppSetting) => {
@@ -253,4 +254,7 @@ export default async(setting: LX.AppSetting) => {
   })
 
   setUserApiList(await getUserApiList())
+
+  // 初始化默认音乐源（如果用户没有任何音乐源）
+  void initDefaultMusicSources()
 }

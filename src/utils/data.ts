@@ -582,3 +582,7 @@ export const saveLocalMusicList = async(list: any[]) => saveData(localMusicListK
 
 export const getLocalFolders = async() => getData<any[]>(localFoldersKey).then(folders => folders ?? [])
 export const saveLocalFolders = async(folders: any[]) => saveData(localFoldersKey, folders)
+
+const localExcludedIdsKey = storageDataPrefix.localExcludedIds
+export const getLocalExcludedIds = async() => getData<string[]>(localExcludedIdsKey).then(ids => ids ?? [])
+export const saveLocalExcludedIds = async(ids: string[]) => saveData(localExcludedIdsKey, ids)
