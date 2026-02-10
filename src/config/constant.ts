@@ -82,6 +82,7 @@ export const storageDataPrefix = {
   localMusicList: '@local_music_list',
   localFolders: '@local_folders',
   localExcludedIds: '@local_excluded_ids',
+  defaultSourcesVersion: '@default_sources_version',
 } as const
 
 // v0.x.x 版本的 data keys

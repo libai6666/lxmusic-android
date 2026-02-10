@@ -8,6 +8,9 @@ export interface DefaultMusicSource {
   url: string
 }
 
+// 每次修改默认源列表时，递增此版本号，触发升级用户重新导入
+export const DEFAULT_SOURCES_VERSION = 2
+
 const defaultMusicSources: DefaultMusicSource[] = [
   {
     name: '音乐源1',
@@ -19,7 +22,7 @@ const defaultMusicSources: DefaultMusicSource[] = [
   },
   {
     name: '音乐源3',
-    url: 'https://raw.githubusercontent.com/pdone/lx-music-source/main/flower/latest.js',
+    url: 'https://ghproxy.net/raw.githubusercontent.com/pdone/lx-music-source/main/flower/latest.js',
   },
 ]
 

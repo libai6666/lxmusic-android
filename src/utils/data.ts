@@ -586,3 +586,8 @@ export const saveLocalFolders = async(folders: any[]) => saveData(localFoldersKe
 const localExcludedIdsKey = storageDataPrefix.localExcludedIds
 export const getLocalExcludedIds = async() => getData<string[]>(localExcludedIdsKey).then(ids => ids ?? [])
 export const saveLocalExcludedIds = async(ids: string[]) => saveData(localExcludedIdsKey, ids)
+
+// ========== Default Sources Version ==========
+const defaultSourcesVersionKey = storageDataPrefix.defaultSourcesVersion
+export const getDefaultSourcesVersion = async() => getData<number>(defaultSourcesVersionKey).then(v => v ?? 0)
+export const saveDefaultSourcesVersion = async(version: number) => saveData(defaultSourcesVersionKey, version)
