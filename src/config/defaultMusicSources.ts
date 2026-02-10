@@ -11,11 +11,11 @@ export interface DefaultMusicSource {
 const defaultMusicSources: DefaultMusicSource[] = [
   {
     name: '音乐源1',
-    url: 'https://ghproxy.net/raw.githubusercontent.com/pdone/lx-music-source/main/lx/latest.js',
+    url: 'https://ghproxy.net/raw.githubusercontent.com/pdone/lx-music-source/main/juhe/latest.js',
   },
   {
     name: '音乐源2',
-    url: 'https://ghproxy.net/raw.githubusercontent.com/pdone/lx-music-source/main/juhe/latest.js',
+    url: 'https://ghproxy.net/raw.githubusercontent.com/pdone/lx-music-source/main/grass/latest.js',
   },
   {
     name: '音乐源3',
