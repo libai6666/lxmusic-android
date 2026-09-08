@@ -1,5 +1,5 @@
 import { memo, useMemo, useEffect, useRef, useCallback } from 'react'
-import { View, FlatList, type FlatListProps, type NativeSyntheticEvent, type NativeScrollEvent, type LayoutChangeEvent } from 'react-native'
+import { View, FlatList, TouchableOpacity, type FlatListProps, type NativeSyntheticEvent, type NativeScrollEvent, type LayoutChangeEvent } from 'react-native'
 // import { useLayout } from '@/utils/hooks'
 import { type Line, useLrcPlay, useLrcSet } from '@/plugins/lyric'
 import { createStyle } from '@/utils/tools'
@@ -9,6 +9,7 @@ import { useSettingValue } from '@/store/setting/hook'
 import { AnimatedColorText } from '@/components/common/Text'
 import { setSpText } from '@/utils/pixelRatio'
 import playerState from '@/store/player/state'
+import { play } from '@/core/player/player'
 import { scrollTo } from '@/utils/scroll'
 import PlayLine, { type PlayLineType } from '../components/PlayLine'
 // import { screenkeepAwake } from '@/utils/nativeModules/utils'
@@ -22,8 +23,9 @@ interface LineProps {
   lineNum: number
   activeLine: number
   onLayout: (lineNum: number, height: number, width: number) => void
+  onPress: (lineNum: number) => void
 }
-const LrcLine = memo(({ line, lineNum, activeLine, onLayout }: LineProps) => {
+const LrcLine = memo(({ line, lineNum, activeLine, onLayout, onPress }: LineProps) => {
   const theme = useTheme()
   const lrcFontSize = useSettingValue('playDetail.horizontal.style.lrcFontSize')
   const textAlign = useSettingValue('playDetail.style.align')
@@ -46,11 +48,14 @@ const LrcLine = memo(({ line, lineNum, activeLine, onLayout }: LineProps) => {
   const handleLayout = ({ nativeEvent }: LayoutChangeEvent) => {
     onLayout(lineNum, nativeEvent.layout.height, nativeEvent.layout.width)
   }
+  const handlePress = () => {
+    onPress(lineNum)
+  }
 
   // textBreakStrategy="simple" 用于解决某些设备上字体被截断的问题
   // https://stackoverflow.com/a/72822360
   return (
-    <View style={styles.line} onLayout={handleLayout}>
+    <TouchableOpacity style={styles.line} activeOpacity={0.5} onLayout={handleLayout} onPress={handlePress}>
       <AnimatedColorText style={{
         ...styles.lineText,
         textAlign,
@@ -65,7 +70,7 @@ const LrcLine = memo(({ line, lineNum, activeLine, onLayout }: LineProps) => {
           }} textBreakStrategy="simple" key={index} color={colors[1]} opacity={colors[2]} size={size * 0.8}>{lrc}</AnimatedColorText>)
         })
       }
-    </View>
+    </TouchableOpacity>
   )
 }, (prevProps, nextProps) => {
   return prevProps.line === nextProps.line &&
@@ -77,6 +82,8 @@ const wait = async() => new Promise(resolve => setTimeout(resolve, 100))
 export default () => {
   const lyricLines = useLrcSet()
   const { line } = useLrcPlay()
+  const lyricLinesRef = useRef(lyricLines)
+  lyricLinesRef.current = lyricLines
   const flatListRef = useRef<FlatList>(null)
   const playLineRef = useRef<PlayLineType>(null)
   const isPauseScrollRef = useRef(true)
@@ -257,9 +264,22 @@ export default () => {
     global.app_event.setProgress(time)
   }, [])
 
+  const handleLinePress = useCallback((lineNum: number) => {
+    const targetLine = lyricLinesRef.current[lineNum]
+    if (!targetLine || !playerState.musicInfo.id) return
+    if (scrollTimoutRef.current) {
+      clearTimeout(scrollTimoutRef.current)
+      scrollTimoutRef.current = null
+    }
+    playLineRef.current?.setVisible(false)
+    isPauseScrollRef.current = false
+    global.app_event.setProgress(targetLine.time / 1000)
+    if (!playerState.isPlay) play()
+  }, [])
+
   const renderItem: FlatListType['renderItem'] = ({ item, index }) => {
     return (
-      <LrcLine line={item} lineNum={index} activeLine={line} onLayout={handleLineLayout} />
+      <LrcLine line={item} lineNum={index} activeLine={line} onLayout={handleLineLayout} onPress={handleLinePress} />
     )
   }
   const getkey: FlatListType['keyExtractor'] = (item, index) => `${index}${item.text}`
