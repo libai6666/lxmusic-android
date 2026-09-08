@@ -19,11 +19,21 @@ jobs:
 
       - name: Build Packages
         shell: bash
+        env:
+          KEYSTORE_STORE_FILE_BASE64: ${{ secrets.KEYSTORE_STORE_FILE_BASE64 }}
+          KEYSTORE_STORE_FILE: ${{ secrets.KEYSTORE_STORE_FILE }}
+          KEYSTORE_KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
         run: |
           cd android
-          echo ${{ secrets.KEYSTORE_STORE_FILE_BASE64 }} | base64 --decode > app/${{ secrets.KEYSTORE_STORE_FILE }}
-          ./gradlew assembleRelease -PMYAPP_UPLOAD_STORE_FILE='${{ secrets.KEYSTORE_STORE_FILE }}' -PMYAPP_UPLOAD_KEY_ALIAS='${{ secrets.KEYSTORE_KEY_ALIAS }}' -PMYAPP_UPLOAD_STORE_PASSWORD='${{ secrets.KEYSTORE_PASSWORD }}' -PMYAPP_UPLOAD_KEY_PASSWORD='${{ secrets.KEYSTORE_KEY_PASSWORD }}'
-          rm -f app/${{ secrets.KEYSTORE_STORE_FILE }}
+          STORE_FILE=$(printf '%s' "$KEYSTORE_STORE_FILE" | tr -d '[:space:]')
+          KEY_ALIAS=$(printf '%s' "$KEYSTORE_KEY_ALIAS" | tr -d '\r\n')
+          STORE_PASSWORD=$(printf '%s' "$KEYSTORE_PASSWORD" | tr -d '\r\n')
+          KEY_PASSWORD=$(printf '%s' "$KEYSTORE_KEY_PASSWORD" | tr -d '\r\n')
+          printf '%s' "$KEYSTORE_STORE_FILE_BASE64" | tr -d '[:space:]' | base64 --decode > "app/$STORE_FILE"
+          ./gradlew assembleRelease -PMYAPP_UPLOAD_STORE_FILE="$STORE_FILE" -PMYAPP_UPLOAD_KEY_ALIAS="$KEY_ALIAS" -PMYAPP_UPLOAD_STORE_PASSWORD="$STORE_PASSWORD" -PMYAPP_UPLOAD_KEY_PASSWORD="$KEY_PASSWORD"
+          rm -f "app/$STORE_FILE"
 
       # Push tag to GitHub if package.json version's tag is not tagged
       - name: Get package version
