@@ -78,6 +78,7 @@ const LrcLine = memo(({ line, lineNum, activeLine, onLayout, onPress }: LineProp
     nextProps.activeLine != nextProps.lineNum
 })
 const wait = async() => new Promise(resolve => setTimeout(resolve, 100))
+const LYRIC_RESTORE_DELAY = 5000
 
 export default () => {
   const lyricLines = useLrcSet()
@@ -169,9 +170,8 @@ export default () => {
       playLineRef.current?.setVisible(false)
       scrollTimoutRef.current = null
       isPauseScrollRef.current = false
-      if (!playerState.isPlay) return
       handleScrollToActive()
-    }, 3000)
+    }, LYRIC_RESTORE_DELAY)
   }
 
 
@@ -260,8 +260,15 @@ export default () => {
   }, [])
 
   const handlePlayLine = useCallback((time: number) => {
+    if (!playerState.musicInfo.id) return
+    if (scrollTimoutRef.current) {
+      clearTimeout(scrollTimoutRef.current)
+      scrollTimoutRef.current = null
+    }
     playLineRef.current?.setVisible(false)
+    isPauseScrollRef.current = false
     global.app_event.setProgress(time)
+    if (!playerState.isPlay) play()
   }, [])
 
   const handleLinePress = useCallback((lineNum: number) => {
