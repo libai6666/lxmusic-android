@@ -1,8 +1,26 @@
 import { httpGet } from '@/utils/request'
-import { author, name } from '../../package.json'
-import { downloadFile, stopDownload, temporaryDirectoryPath } from '@/utils/fs'
+import { downloadFile, stopDownload, temporaryDirectoryPath, unlink, existsFile } from '@/utils/fs'
 import { getSupportedAbis, installApk } from '@/utils/nativeModules/utils'
 import { APP_PROVIDER_NAME } from '@/config/constant'
+
+/**
+ * 公开分发仓：GitHub Actions 发版时把 APK 发布到该仓库的 Release，
+ * 并把更新清单 latest-android.json 写到仓库根目录（main 分支）。
+ */
+export const UPDATE_REPO = 'libai6666/lxmusic-android-updates'
+export const UPDATE_RELEASES_PAGE = `https://github.com/${UPDATE_REPO}/releases`
+const MANIFEST_RAW_URL = `https://raw.githubusercontent.com/${UPDATE_REPO}/main/latest-android.json`
+
+/**
+ * 公共 GitHub 加速代理：国内网络直连 raw/release 很慢甚至不通，
+ * 检查与下载时优先走代理，最后直连兜底。代理服务兴衰无常，随版本维护。
+ */
+const GITHUB_MIRRORS = [
+  'https://ghfast.top/',
+  'https://gh-proxy.net/',
+  'https://gh-proxy.com/',
+  'https://ghproxy.net/',
+]
 
 const abis = [
   'arm64-v8a',
@@ -12,65 +30,70 @@ const abis = [
   'universal',
 ]
 
-const address = [
-  [`https://raw.githubusercontent.com/${author.name}/${name}/master/publish/version.json`, 'direct'],
-  ['https://registry.npmjs.org/lx-music-mobile-version-info/latest', 'npm'],
-  [`https://cdn.jsdelivr.net/gh/${author.name}/${name}/publish/version.json`, 'direct'],
-  [`https://fastly.jsdelivr.net/gh/${author.name}/${name}/publish/version.json`, 'direct'],
-  [`https://gcore.jsdelivr.net/gh/${author.name}/${name}/publish/version.json`, 'direct'],
-  ['https://registry.npmmirror.com/lx-music-mobile-version-info/latest', 'npm'],
-  ['https://gitee.com/lyswhut/lx-music-mobile-versions/raw/master/version.json', 'direct'],
-  ['http://cdn.stsky.cn/lx-music/mobile/version.json', 'direct'],
-]
+const isGithubUrl = (url) => {
+  const host = (/^https?:\/\/([^/?#]+)/i.exec(url)?.[1] ?? '').toLowerCase()
+  return host == 'github.com' || host == 'raw.githubusercontent.com' || host.endsWith('.githubusercontent.com')
+}
 
+/** GitHub 地址：各加速代理 + 直连兜底；其他地址保持原样 */
+const urlCandidates = (url) => isGithubUrl(url) ? [...GITHUB_MIRRORS.map(m => m + url), url] : [url]
 
-const request = async(url, retryNum = 0) => {
+const manifestCandidates = () => {
+  const bust = `?t=${Date.now()}`
+  return [
+    ...urlCandidates(MANIFEST_RAW_URL).map(u => u + bust),
+    // jsDelivr 国内可达，但对分支有缓存，作为最后兜底
+    `https://fastly.jsdelivr.net/gh/${UPDATE_REPO}@main/latest-android.json`,
+    `https://cdn.jsdelivr.net/gh/${UPDATE_REPO}@main/latest-android.json`,
+  ]
+}
+
+const requestJson = (url, timeout = 10000) => {
   return new Promise((resolve, reject) => {
-    httpGet(url, {
-      timeout: 10000,
-    }, (err, resp, body) => {
-      if (err || resp.statusCode != 200) {
-        ++retryNum >= 3
-          ? reject(err || new Error(resp.statusMessage || resp.statusCode))
-          : request(url, retryNum).then(resolve).catch(reject)
-      } else resolve(body)
+    httpGet(url, { timeout }, (err, resp, body) => {
+      if (err || resp.statusCode != 200) reject(err || new Error(resp.statusMessage || String(resp.statusCode)))
+      else if (typeof body != 'object' || body == null) reject(new Error('invalid manifest'))
+      else resolve(body)
     })
   })
 }
 
-const getDirectInfo = async(url) => {
-  return request(url).then(info => {
-    if (info.version == null) throw new Error('failed')
-    return info
+/** 并发请求所有候选地址，第一个返回有效清单的胜出 */
+const raceManifest = (urls) => {
+  return new Promise((resolve, reject) => {
+    let pending = urls.length
+    let lastError = null
+    let done = false
+    for (const url of urls) {
+      requestJson(url).then(info => {
+        if (info.version == null) throw new Error('manifest missing version')
+        if (!done) {
+          done = true
+          resolve(info)
+        }
+      }).catch(err => {
+        lastError = err
+      }).finally(() => {
+        if (--pending == 0 && !done) reject(lastError ?? new Error('all mirrors failed'))
+      })
+    }
   })
 }
 
-const getNpmPkgInfo = async(url) => {
-  return request(url).then(json => {
-    if (!json.versionInfo) throw new Error('failed')
-    const info = JSON.parse(json.versionInfo)
-    if (info.version == null) throw new Error('failed')
-    return info
-  })
-}
+let latestManifest = null
 
-export const getVersionInfo = async(index = 0) => {
-  const [url, source] = address[index]
-  let promise
-  switch (source) {
-    case 'direct':
-      promise = getDirectInfo(url)
-      break
-    case 'npm':
-      promise = getNpmPkgInfo(url)
-      break
+/**
+ * 清单格式（由 .github/workflows/release.yml 生成）：
+ * { version, versionCode, desc, history: [{ version, desc }], page, assets: { [abi]: url }, published }
+ */
+export const getVersionInfo = async() => {
+  const info = await raceManifest(manifestCandidates())
+  latestManifest = info
+  return {
+    version: String(info.version),
+    desc: info.desc ?? '',
+    history: Array.isArray(info.history) ? info.history : [],
   }
-
-  return promise.catch(async(err) => {
-    index++
-    if (index >= address.length) throw err
-    return getVersionInfo(index)
-  })
 }
 
 const getTargetAbi = async() => {
@@ -80,41 +103,77 @@ const getTargetAbi = async() => {
   }
   return abis[abis.length - 1]
 }
+
+const getApkUrl = async(version) => {
+  const abi = await getTargetAbi()
+  const assets = latestManifest?.version == version ? latestManifest.assets : null
+  if (assets) {
+    const url = assets[abi] ?? assets.universal
+    if (url) return url
+  }
+  return `https://github.com/${UPDATE_REPO}/releases/download/v${version}/lx-music-mobile-v${version}-${abi}.apk`
+}
+
 let downloadJobId = null
+let canceled = false
 const noop = (total, download) => {}
 let apkSavePath
 
-export const downloadNewVersion = async(version, onDownload = noop) => {
-  const abi = await getTargetAbi()
-  const url = `https://github.com/${author.name}/${name}/releases/download/v${version}/${name}-v${version}-${abi}.apk`
-  let savePath = temporaryDirectoryPath + '/lx-music-mobile.apk'
+// 代理失败时常返回 200 + 很小的 HTML 错误页，按体积挡掉
+const MIN_APK_SIZE = 1024 * 1024
 
-  if (downloadJobId) stopDownload(downloadJobId)
-
+const tryDownload = (url, savePath, onDownload) => {
   const { jobId, promise } = downloadFile(url, savePath, {
     progressInterval: 500,
-    connectionTimeout: 20000,
-    readTimeout: 30000,
+    connectionTimeout: 15000,
+    readTimeout: 20000,
     begin({ statusCode, contentLength }) {
       onDownload(contentLength, 0)
-      // switch (statusCode) {
-      //   case 200:
-      //   case 206:
-      //     break
-      //   default:
-      //     onDownload(null, contentLength, 0)
-      //     break
-      // }
     },
     progress({ contentLength, bytesWritten }) {
       onDownload(contentLength, bytesWritten)
     },
   })
   downloadJobId = jobId
-  return promise.then(() => {
-    apkSavePath = savePath
-    return updateApp()
+  return promise.then(({ statusCode, bytesWritten }) => {
+    if (statusCode != 200) throw new Error(`HTTP ${statusCode}`)
+    if (bytesWritten < MIN_APK_SIZE) throw new Error(`suspicious body (${bytesWritten})`)
   })
+}
+
+/**
+ * 下载新版本 APK：依次尝试加速代理与直连，失败自动切换下一个地址
+ */
+export const downloadNewVersion = async(version, onDownload = noop) => {
+  const url = await getApkUrl(version)
+  const savePath = temporaryDirectoryPath + '/lx-music-mobile.apk'
+
+  if (downloadJobId) stopDownload(downloadJobId)
+  canceled = false
+
+  let lastError = null
+  for (const candidate of urlCandidates(url)) {
+    if (canceled) break
+    try {
+      console.log('[updater] downloading', candidate)
+      await tryDownload(candidate, savePath, onDownload)
+      downloadJobId = null
+      apkSavePath = savePath
+      return updateApp()
+    } catch (err) {
+      console.log('[updater] download failed', candidate, err?.message)
+      lastError = err
+      if (await existsFile(savePath).catch(() => false)) await unlink(savePath).catch(() => {})
+    }
+  }
+  downloadJobId = null
+  throw lastError ?? new Error('download failed')
+}
+
+export const cancelDownload = () => {
+  canceled = true
+  if (downloadJobId) stopDownload(downloadJobId)
+  downloadJobId = null
 }
 
 export const updateApp = async() => {

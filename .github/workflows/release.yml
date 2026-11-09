@@ -160,6 +160,11 @@ jobs:
     runs-on: ubuntu-latest
     # needs: [Android, Android_SL]
     needs: [Android]
+    env:
+      # 公开分发仓：APK 与更新清单发布到这里，供应用内自动更新使用
+      UPDATE_REPO: libai6666/lxmusic-android-updates
+      # 需在本仓库 Settings > Secrets 配置 UPDATES_REPO_TOKEN（对分发仓有 contents:write 权限的 PAT）
+      HAS_UPDATES_TOKEN: ${{ secrets.UPDATES_REPO_TOKEN != '' }}
     steps:
       - name: Check out git repository
         uses: actions/checkout@v4
@@ -170,16 +175,28 @@ jobs:
           path: ./artifacts
           merge-multiple: true
 
+      - name: Get package version
+        run: node -p -e '`PACKAGE_VERSION=${require("./package.json").version}`' >> $GITHUB_ENV
+
+      - name: Check out updates repository
+        if: env.HAS_UPDATES_TOKEN == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.UPDATE_REPO }}
+          token: ${{ secrets.UPDATES_REPO_TOKEN }}
+          path: updates
+          fetch-depth: 1
+
+      - name: Generate update manifest
+        if: env.HAS_UPDATES_TOKEN == 'true'
+        run: node publish/genUpdateManifest.js "$UPDATE_REPO" updates/latest-android.json latest-android.json
+
       - name: Generate file MD5
         run: |
           echo -e '\n### File MD5\n```' >> ./publish/changeLog.md
           cd artifacts
           md5sum *.apk >> ../publish/changeLog.md
           echo -e '```\n' >> ../publish/changeLog.md
-          echo -e '\n[软件安装包说明](https://lyswhut.github.io/lx-music-doc/download#%E8%BD%AF%E4%BB%B6%E5%AE%89%E8%A3%85%E5%8C%85%E8%AF%B4%E6%98%8E)\n' >> ../publish/changeLog.md
-
-      - name: Get package version
-        run: node -p -e '`PACKAGE_VERSION=${require("./package.json").version}`' >> $GITHUB_ENV
 
       - name: Release
         uses: softprops/action-gh-release@v2
@@ -199,3 +216,41 @@ jobs:
           # artifacts/lx-music-mobile-v${{ env.PACKAGE_VERSION }}-android_5-universal.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release to updates repository
+        if: env.HAS_UPDATES_TOKEN == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: ${{ env.UPDATE_REPO }}
+          token: ${{ secrets.UPDATES_REPO_TOKEN }}
+          body_path: ./publish/changeLog.md
+          prerelease: false
+          draft: false
+          tag_name: v${{ env.PACKAGE_VERSION }}
+          name: v${{ env.PACKAGE_VERSION }}
+          files: |
+            artifacts/lx-music-mobile-v${{ env.PACKAGE_VERSION }}-arm64-v8a.apk
+            artifacts/lx-music-mobile-v${{ env.PACKAGE_VERSION }}-armeabi-v7a.apk
+            artifacts/lx-music-mobile-v${{ env.PACKAGE_VERSION }}-x86_64.apk
+            artifacts/lx-music-mobile-v${{ env.PACKAGE_VERSION }}-x86.apk
+            artifacts/lx-music-mobile-v${{ env.PACKAGE_VERSION }}-universal.apk
+
+      # 清单最后推送：确保客户端看到新版本时 APK 已经可下载
+      - name: Publish update manifest
+        if: env.HAS_UPDATES_TOKEN == 'true'
+        run: |
+          cp latest-android.json updates/latest-android.json
+          cd updates
+          git config user.name 'lxmusic-ci'
+          git config user.email 'lxmusic-ci@users.noreply.github.com'
+          git add latest-android.json
+          if git diff --cached --quiet; then
+            echo 'manifest unchanged'
+          else
+            git commit -m "android v${PACKAGE_VERSION}"
+            git push
+          fi
+
+      - name: Warn missing updates token
+        if: env.HAS_UPDATES_TOKEN != 'true'
+        run: echo "::warning::UPDATES_REPO_TOKEN 未配置，已跳过发布到 ${UPDATE_REPO}，应用内自动更新不会收到此版本"
